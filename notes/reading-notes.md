@@ -10,3 +10,8 @@ BIG Take aways here:
     perfectionist. Iteratively improve them once you have all the stories implemented in bare bones. 
 
 p.s. fix the ci
+
+## 3/16/22
+Read up to 3.8.4.1. We started writing endpoints and tests! I got WSL2 setup and working correctly.
+
+Big take away: Test before you implement. Refactor often. Separate your concerns.
