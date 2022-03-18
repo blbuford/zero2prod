@@ -19,6 +19,7 @@ sqlx = { version = "0.5.11", default-features = false, features = [ "runtime-act
 config = "0.11"
 uuid = { version = "0.8.2", features = ["v4"]}
 chrono = "0.4.19"
+env_logger = "0.9.0"
 
 [dev-dependencies]
 reqwest = "0.11"
