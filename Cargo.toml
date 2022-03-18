@@ -20,7 +20,9 @@ config = "0.11"
 uuid = { version = "0.8.2", features = ["v4"]}
 chrono = "0.4.19"
 env_logger = "0.9.0"
-log = "0.4"
+tracing = { version = "0.1", features = ["log"] }
+tracing-subscriber = { version = "0.3", features = ["registry", "env-filter"] }
+tracing-bunyan-formatter = "0.3"
 
 [dev-dependencies]
 reqwest = "0.11"
