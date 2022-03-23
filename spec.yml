@@ -2,6 +2,22 @@ name: zero2prod
 region: sfo3
 services:
   - name: zero2prod
+    envs:
+      - key: APP_DATABASE__USERNAME
+        scope: RUN_TIME
+        value: ${newletter.USERNAME}
+      - key: APP_DATABASE__PASSWORD
+        scope: RUN_TIME
+        value: ${newletter.PASSWORD}
+      - key: APP_DATABASE__HOSTNAME
+        scope: RUN_TIME
+        value: ${newletter.HOSTNAME}
+      - key: APP_DATABASE__PORT
+        scope: RUN_TIME
+        value: ${newletter.PORT}
+      - key: APP_DATABASE__DATABASE_NAME
+        scope: RUN_TIME
+        value: ${newletter.DATABASE}
     dockerfile_path: Dockerfile
     source_dir: .
     github:
