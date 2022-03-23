@@ -5,19 +5,19 @@ services:
     envs:
       - key: APP_DATABASE__USERNAME
         scope: RUN_TIME
-        value: ${newletter.USERNAME}
+        value: ${newsletter.USERNAME}
       - key: APP_DATABASE__PASSWORD
         scope: RUN_TIME
-        value: ${newletter.PASSWORD}
+        value: ${newsletter.PASSWORD}
       - key: APP_DATABASE__HOSTNAME
         scope: RUN_TIME
-        value: ${newletter.HOSTNAME}
+        value: ${newsletter.HOSTNAME}
       - key: APP_DATABASE__PORT
         scope: RUN_TIME
-        value: ${newletter.PORT}
+        value: ${newsletter.PORT}
       - key: APP_DATABASE__DATABASE_NAME
         scope: RUN_TIME
-        value: ${newletter.DATABASE}
+        value: ${newsletter.DATABASE}
     dockerfile_path: Dockerfile
     source_dir: .
     github:
@@ -36,4 +36,4 @@ databases:
     name: newsletter
     num_nodes: 1
     size: db-s-dev-database
-    version: "14"
+    version: "12"
