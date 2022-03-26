@@ -30,7 +30,7 @@ jobs:
           - 5432:5432
     env:
       SQLX_VERSION: 0.5.11
-      SQLX_FEATURES: postgres runtime-actix-rustls
+      SQLX_FEATURES: postgres,runtime-actix-rustls
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
