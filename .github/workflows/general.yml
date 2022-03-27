@@ -30,7 +30,7 @@ jobs:
           - 5432:5432
     env:
       SQLX_VERSION: 0.5.11
-      SQLX_FEATURES: 'postgres,runtime-actix-rustls'
+      SQLX_FEATURES: postgres
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -67,7 +67,7 @@ jobs:
             sqlx-cli
             --force
             --version=${{ env.SQLX_VERSION }}
-            --features=${{ env.SQLX_FEATURES }}
+            --features=postgres,runtime-actix-rustls
             --no-default-features
             --locked
       - name: Migrate database
