@@ -67,7 +67,7 @@ jobs:
             sqlx-cli
             --force
             --version=${{ env.SQLX_VERSION }}
-            --features=postgres,runtime-actix-rustls
+            --features=postgres,rustls
             --no-default-features
             --locked
       - name: Migrate database
