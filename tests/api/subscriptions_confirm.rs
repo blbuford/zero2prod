@@ -1,6 +1,7 @@
 use crate::helpers::spawn_app;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, ResponseTemplate};
+use zero2prod::domain::SubscriptionToken;
 
 #[tokio::test]
 async fn confirmations_without_token_are_rejected_with_a_400() {
@@ -11,6 +12,33 @@ async fn confirmations_without_token_are_rejected_with_a_400() {
         .unwrap();
 
     assert_eq!(response.status().as_u16(), 400);
+}
+
+#[tokio::test]
+async fn confirmations_with_invalid_token_are_rejected_with_a_400() {
+    let app = spawn_app().await;
+
+    let response = reqwest::get(&format!("{}/subscriptions/confirm?subscription_token=fake", app.address))
+        .await
+        .unwrap();
+
+    assert_eq!(response.status().as_u16(), 400);
+}
+
+#[tokio::test]
+async fn confirmations_with_well_formatted_but_invalid_token_are_rejected_with_a_401() {
+    let app = spawn_app().await;
+
+    let subscription_token = SubscriptionToken::generate();
+    let response = reqwest::get(&format!(
+        "{}/subscriptions/confirm?subscription_token={}",
+        app.address,
+        subscription_token.as_ref()
+    ))
+        .await
+        .unwrap();
+
+    assert_eq!(response.status().as_u16(), 401);
 }
 
 #[tokio::test]

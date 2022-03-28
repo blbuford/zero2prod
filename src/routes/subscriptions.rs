@@ -1,10 +1,8 @@
-use crate::domain::{NewSubscriber, SubscriberEmail, SubscriberName};
+use crate::domain::{NewSubscriber, SubscriberEmail, SubscriberName, SubscriptionToken};
 use crate::email_client::EmailClient;
 use crate::startup::ApplicationBaseUrl;
 use actix_web::{web, HttpResponse};
 use chrono::Utc;
-use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
 use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
@@ -58,7 +56,7 @@ pub async fn subscribe(
     let subscription_token = match get_past_subscription_token(&mut transaction, subscriber_id).await {
         Ok(Some(token)) => token,
         Ok(None) => {
-            let subscription_token = generate_subscription_token();
+            let subscription_token = SubscriptionToken::generate();
             if store_token(&mut transaction, subscriber_id, &subscription_token)
                 .await
                 .is_err()
@@ -94,13 +92,13 @@ pub async fn subscribe(
 pub async fn store_token(
     transaction: &mut Transaction<'_, Postgres>,
     subscriber_id: Uuid,
-    subscription_token: &str,
+    subscription_token: &SubscriptionToken,
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
         r#"INSERT INTO subscription_tokens (subscription_token, subscriber_id)
         VALUES ($1, $2)
         "#,
-        subscription_token,
+        subscription_token.as_ref(),
         subscriber_id
     )
     .execute(transaction)
@@ -119,11 +117,11 @@ pub async fn send_confirmation_email(
     email_client: &EmailClient,
     new_subscriber: NewSubscriber,
     base_url: &ApplicationBaseUrl,
-    subscription_token: &str,
+    subscription_token: &SubscriptionToken,
 ) -> Result<(), reqwest::Error> {
     let confirmation_link = format!(
         "{}/subscriptions/confirm?subscription_token={}",
-        base_url.0, subscription_token
+        base_url.0, subscription_token.as_ref()
     );
     email_client
         .send_email(
@@ -200,7 +198,7 @@ skip(subscriber_id, transaction)
 pub async fn get_past_subscription_token(
     transaction: &mut Transaction<'_, Postgres>,
     subscriber_id: Uuid,
-) -> Result<Option<String>, sqlx::Error> {
+) -> Result<Option<SubscriptionToken>, sqlx::Error> {
     let result = sqlx::query!(
         r#"
         SELECT subscription_token FROM subscription_tokens WHERE subscriber_id = $1
@@ -213,13 +211,5 @@ pub async fn get_past_subscription_token(
             tracing::error!("Failed to execute query: {:?}", e);
             e
         })?;
-    Ok(result.map(|r| r.subscription_token))
-}
-
-fn generate_subscription_token() -> String {
-    let mut rng = thread_rng();
-    std::iter::repeat_with(|| rng.sample(Alphanumeric))
-        .map(char::from)
-        .take(25)
-        .collect()
+    Ok(result.map(|r| SubscriptionToken::parse(r.subscription_token).unwrap()))
 }
