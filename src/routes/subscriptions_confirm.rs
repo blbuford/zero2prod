@@ -1,7 +1,7 @@
+use crate::domain::SubscriptionToken;
 use actix_web::{web, HttpResponse};
 use sqlx::PgPool;
 use uuid::Uuid;
-use crate::domain::SubscriptionToken;
 
 #[derive(serde::Deserialize)]
 pub struct Parameters {
@@ -13,10 +13,11 @@ pub struct Parameters {
     skip(parameters, pool)
 )]
 pub async fn confirm(parameters: web::Query<Parameters>, pool: web::Data<PgPool>) -> HttpResponse {
-    let subscription_token = match SubscriptionToken::parse(parameters.subscription_token.to_string()) {
-        Ok(token) => token,
-        Err(_) => return HttpResponse::BadRequest().finish(),
-    };
+    let subscription_token =
+        match SubscriptionToken::parse(parameters.subscription_token.to_string()) {
+            Ok(token) => token,
+            Err(_) => return HttpResponse::BadRequest().finish(),
+        };
 
     let id = match get_subscriber_id_from_token(&pool, &subscription_token).await {
         Ok(id) => id,

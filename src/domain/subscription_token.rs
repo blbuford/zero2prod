@@ -20,9 +20,9 @@ impl SubscriptionToken {
         let mut rng = thread_rng();
         Self(
             std::iter::repeat_with(|| rng.sample(Alphanumeric))
-            .map(char::from)
-            .take(25)
-            .collect()
+                .map(char::from)
+                .take(25)
+                .collect(),
         )
     }
 }

@@ -46,7 +46,7 @@ impl TestApp {
         &self,
         email_request: &wiremock::Request,
         html_links: usize,
-        text_links: usize
+        text_links: usize,
     ) -> ConfirmationLinks {
         let body: serde_json::Value = serde_json::from_slice(&email_request.body).unwrap();
 

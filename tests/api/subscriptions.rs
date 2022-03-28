@@ -141,12 +141,10 @@ async fn subscribe_sends_a_confirmation_email_template() {
 
     let email_request = &app.email_server.received_requests().await.unwrap()[0];
     let body: serde_json::Value = serde_json::from_slice(&email_request.body).unwrap();
-    assert!(
-        body["HtmlBody"]
-            .as_str()
-            .unwrap()
-            .contains("Click the link below to confirm your email address and finish your account")
-    );
+    assert!(body["HtmlBody"]
+        .as_str()
+        .unwrap()
+        .contains("Click the link below to confirm your email address and finish your account"));
     // Mock asserts on drop
 }
 
@@ -190,6 +188,9 @@ async fn subscribe_twice_sends_same_confirmation_links() {
     let confirmation_links2 = app.get_confirmation_links(&email_request2, 3, 1);
 
     assert_eq!(confirmation_links1.html, confirmation_links2.html);
-    assert_eq!(confirmation_links1.plain_text, confirmation_links2.plain_text);
+    assert_eq!(
+        confirmation_links1.plain_text,
+        confirmation_links2.plain_text
+    );
     // Mock asserts on drop
 }

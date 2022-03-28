@@ -1,11 +1,11 @@
 use crate::domain::{NewSubscriber, SubscriberEmail, SubscriberName, SubscriptionToken};
 use crate::email_client::EmailClient;
-use crate::startup::{ApplicationBaseUrl};
+use crate::startup::ApplicationBaseUrl;
 use actix_web::{web, HttpResponse};
+use askama_actix::Template;
 use chrono::Utc;
 use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
-use askama_actix::Template;
 
 #[derive(serde::Deserialize)]
 pub struct FormData {
@@ -60,20 +60,21 @@ pub async fn subscribe(
         },
         Err(_) => return HttpResponse::InternalServerError().finish(),
     };
-    let subscription_token = match get_past_subscription_token(&mut transaction, subscriber_id).await {
-        Ok(Some(token)) => token,
-        Ok(None) => {
-            let subscription_token = SubscriptionToken::generate();
-            if store_token(&mut transaction, subscriber_id, &subscription_token)
-                .await
-                .is_err()
-            {
-                return HttpResponse::InternalServerError().finish();
+    let subscription_token =
+        match get_past_subscription_token(&mut transaction, subscriber_id).await {
+            Ok(Some(token)) => token,
+            Ok(None) => {
+                let subscription_token = SubscriptionToken::generate();
+                if store_token(&mut transaction, subscriber_id, &subscription_token)
+                    .await
+                    .is_err()
+                {
+                    return HttpResponse::InternalServerError().finish();
+                }
+                subscription_token
             }
-            subscription_token
-        },
-        Err(_) => return HttpResponse::InternalServerError().finish(),
-    };
+            Err(_) => return HttpResponse::InternalServerError().finish(),
+        };
 
     if send_confirmation_email(
         &email_client,
@@ -128,11 +129,12 @@ pub async fn send_confirmation_email(
 ) -> Result<(), reqwest::Error> {
     let confirmation_link = format!(
         "{}/subscriptions/confirm?subscription_token={}",
-        base_url.0, subscription_token.as_ref()
+        base_url.0,
+        subscription_token.as_ref()
     );
 
-    let template = ConfirmationTemplate{
-        confirmation_link: confirmation_link.as_str()
+    let template = ConfirmationTemplate {
+        confirmation_link: confirmation_link.as_str(),
     };
 
     let rendered_html = template.render().unwrap();
@@ -179,8 +181,8 @@ pub async fn insert_subscriber(
 }
 
 #[tracing::instrument(
-name = "Checking for past subscription in the database",
-skip(new_subscriber, transaction)
+    name = "Checking for past subscription in the database",
+    skip(new_subscriber, transaction)
 )]
 pub async fn get_past_subscription(
     transaction: &mut Transaction<'_, Postgres>,
@@ -192,18 +194,18 @@ pub async fn get_past_subscription(
         "#,
         new_subscriber.email.as_ref(),
     )
-        .fetch_optional(transaction)
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to execute query: {:?}", e);
-            e
-        })?;
+    .fetch_optional(transaction)
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to execute query: {:?}", e);
+        e
+    })?;
     Ok(result.map(|r| r.id))
 }
 
 #[tracing::instrument(
-name = "Checking for past subscription token in the database",
-skip(subscriber_id, transaction)
+    name = "Checking for past subscription token in the database",
+    skip(subscriber_id, transaction)
 )]
 pub async fn get_past_subscription_token(
     transaction: &mut Transaction<'_, Postgres>,
@@ -215,11 +217,11 @@ pub async fn get_past_subscription_token(
         "#,
         subscriber_id,
     )
-        .fetch_optional(transaction)
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to execute query: {:?}", e);
-            e
-        })?;
+    .fetch_optional(transaction)
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to execute query: {:?}", e);
+        e
+    })?;
     Ok(result.map(|r| SubscriptionToken::parse(r.subscription_token).unwrap()))
 }
