@@ -47,18 +47,28 @@ pub async fn subscribe(
         Ok(transaction) => transaction,
         Err(_) => return HttpResponse::InternalServerError().finish(),
     };
-    let subscriber_id = match insert_subscriber(&mut transaction, &new_subscriber).await {
-        Ok(subscriber_id) => subscriber_id,
+    let subscriber_id = match get_past_subscription(&mut transaction, &new_subscriber).await {
+        Ok(Some(id)) => id,
+        Ok(None) => match insert_subscriber(&mut transaction, &new_subscriber).await {
+            Ok(subscriber_id) => subscriber_id,
+            Err(_) => return HttpResponse::InternalServerError().finish(),
+        },
         Err(_) => return HttpResponse::InternalServerError().finish(),
     };
-
-    let subscription_token = generate_subscription_token();
-    if store_token(&mut transaction, subscriber_id, &subscription_token)
-        .await
-        .is_err()
-    {
-        return HttpResponse::InternalServerError().finish();
-    }
+    let subscription_token = match get_past_subscription_token(&mut transaction, subscriber_id).await {
+        Ok(Some(token)) => token,
+        Ok(None) => {
+            let subscription_token = generate_subscription_token();
+            if store_token(&mut transaction, subscriber_id, &subscription_token)
+                .await
+                .is_err()
+            {
+                return HttpResponse::InternalServerError().finish();
+            }
+            subscription_token
+        },
+        Err(_) => return HttpResponse::InternalServerError().finish(),
+    };
 
     if send_confirmation_email(
         &email_client,
@@ -88,7 +98,8 @@ pub async fn store_token(
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
         r#"INSERT INTO subscription_tokens (subscription_token, subscriber_id)
-        VALUES ($1, $2)"#,
+        VALUES ($1, $2)
+        "#,
         subscription_token,
         subscriber_id
     )
@@ -143,6 +154,7 @@ pub async fn insert_subscriber(
         r#"
         INSERT INTO subscriptions (id, email, name, subscribed_at, status)
         VALUES ($1, $2, $3, $4, 'pending_confirmation')
+        ON CONFLICT DO NOTHING
         "#,
         subscriber_id,
         new_subscriber.email.as_ref(),
@@ -156,6 +168,52 @@ pub async fn insert_subscriber(
         e
     })?;
     Ok(subscriber_id)
+}
+
+#[tracing::instrument(
+name = "Checking for past subscription in the database",
+skip(new_subscriber, transaction)
+)]
+pub async fn get_past_subscription(
+    transaction: &mut Transaction<'_, Postgres>,
+    new_subscriber: &NewSubscriber,
+) -> Result<Option<Uuid>, sqlx::Error> {
+    let result = sqlx::query!(
+        r#"
+        SELECT id FROM subscriptions WHERE email = $1
+        "#,
+        new_subscriber.email.as_ref(),
+    )
+        .fetch_optional(transaction)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to execute query: {:?}", e);
+            e
+        })?;
+    Ok(result.map(|r| r.id))
+}
+
+#[tracing::instrument(
+name = "Checking for past subscription token in the database",
+skip(subscriber_id, transaction)
+)]
+pub async fn get_past_subscription_token(
+    transaction: &mut Transaction<'_, Postgres>,
+    subscriber_id: Uuid,
+) -> Result<Option<String>, sqlx::Error> {
+    let result = sqlx::query!(
+        r#"
+        SELECT subscription_token FROM subscription_tokens WHERE subscriber_id = $1
+        "#,
+        subscriber_id,
+    )
+        .fetch_optional(transaction)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to execute query: {:?}", e);
+            e
+        })?;
+    Ok(result.map(|r| r.subscription_token))
 }
 
 fn generate_subscription_token() -> String {
