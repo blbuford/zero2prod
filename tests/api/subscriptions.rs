@@ -119,9 +119,34 @@ async fn subscribe_sends_a_confirmation_email_with_a_link() {
     app.post_subscriptions(body.into()).await;
 
     let email_request = &app.email_server.received_requests().await.unwrap()[0];
-    let confirmation_links = app.get_confirmation_links(&email_request);
+    let confirmation_links = app.get_confirmation_links(&email_request, 3, 1);
 
     assert_eq!(confirmation_links.html, confirmation_links.plain_text);
+    // Mock asserts on drop
+}
+
+#[tokio::test]
+async fn subscribe_sends_a_confirmation_email_template() {
+    let app = spawn_app().await;
+    let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
+
+    Mock::given(path("/email"))
+        .and(method("POST"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&app.email_server)
+        .await;
+
+    app.post_subscriptions(body.into()).await;
+
+    let email_request = &app.email_server.received_requests().await.unwrap()[0];
+    let body: serde_json::Value = serde_json::from_slice(&email_request.body).unwrap();
+    assert!(
+        body["HtmlBody"]
+            .as_str()
+            .unwrap()
+            .contains("Click the link below to confirm your email address and finish your account")
+    );
     // Mock asserts on drop
 }
 
@@ -161,8 +186,8 @@ async fn subscribe_twice_sends_same_confirmation_links() {
     let requests = &app.email_server.received_requests().await.unwrap();
     let email_request1 = &requests[0];
     let email_request2 = &requests[1];
-    let confirmation_links1 = app.get_confirmation_links(&email_request1);
-    let confirmation_links2 = app.get_confirmation_links(&email_request2);
+    let confirmation_links1 = app.get_confirmation_links(&email_request1, 3, 1);
+    let confirmation_links2 = app.get_confirmation_links(&email_request2, 3, 1);
 
     assert_eq!(confirmation_links1.html, confirmation_links2.html);
     assert_eq!(confirmation_links1.plain_text, confirmation_links2.plain_text);

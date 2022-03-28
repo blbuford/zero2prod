@@ -1,10 +1,11 @@
 use crate::domain::{NewSubscriber, SubscriberEmail, SubscriberName, SubscriptionToken};
 use crate::email_client::EmailClient;
-use crate::startup::ApplicationBaseUrl;
+use crate::startup::{ApplicationBaseUrl};
 use actix_web::{web, HttpResponse};
 use chrono::Utc;
 use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
+use askama_actix::Template;
 
 #[derive(serde::Deserialize)]
 pub struct FormData {
@@ -20,6 +21,12 @@ impl TryFrom<FormData> for NewSubscriber {
         let email = SubscriberEmail::parse(value.email)?;
         Ok(NewSubscriber { email, name })
     }
+}
+
+#[derive(Template)]
+#[template(path = "confirmation.html")]
+pub struct ConfirmationTemplate<'a> {
+    confirmation_link: &'a str,
 }
 
 #[tracing::instrument(
@@ -123,14 +130,17 @@ pub async fn send_confirmation_email(
         "{}/subscriptions/confirm?subscription_token={}",
         base_url.0, subscription_token.as_ref()
     );
+
+    let template = ConfirmationTemplate{
+        confirmation_link: confirmation_link.as_str()
+    };
+
+    let rendered_html = template.render().unwrap();
     email_client
         .send_email(
             new_subscriber.email,
             "Welcome!",
-            &format!(
-                "Click <a href=\"{}\">here</a> to confirm your subscription",
-                confirmation_link
-            ),
+            &rendered_html,
             &format!(
                 "Welcome to our newsletter!\nVisit {} to confirm your subscription",
                 confirmation_link
