@@ -26,9 +26,11 @@ pub async fn confirm(
     let id = get_subscriber_id_from_token(&pool, &subscription_token)
         .await
         .context("Failed to retrieve subscriber ID from subscription_tokens.")?
-        .ok_or(SubscriptionConfirmationError::UnauthorizedError(
-            "Failed to find token in database.".into(),
-        ))?;
+        .ok_or_else(|| {
+            SubscriptionConfirmationError::UnauthorizedError(
+                "Failed to find token in database.".into(),
+            )
+        })?;
 
     confirm_subscriber(&pool, id).await.context("")?;
     Ok(HttpResponse::Ok().finish())

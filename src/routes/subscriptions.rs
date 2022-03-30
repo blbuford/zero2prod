@@ -108,7 +108,7 @@ pub async fn store_token(
     )
     .execute(transaction)
     .await
-    .map_err(|e| StoreTokenError(e))?;
+    .map_err(StoreTokenError)?;
     Ok(())
 }
 #[tracing::instrument(
@@ -134,7 +134,7 @@ pub async fn send_confirmation_email(
     let rendered_html = template.render().unwrap();
     email_client
         .send_email(
-            new_subscriber.email,
+            &new_subscriber.email,
             "Welcome!",
             &rendered_html,
             &format!(
