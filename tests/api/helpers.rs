@@ -46,6 +46,7 @@ impl TestApp {
         reqwest::Client::new()
             .post(&format!("{}/newsletters", &self.address))
             .header("Content-Type", "application/x-www-form-urlencoded")
+            .basic_auth(Uuid::new_v4().to_string(), Some(Uuid::new_v4().to_string()))
             .json(&body)
             .send()
             .await
