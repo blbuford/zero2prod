@@ -11,7 +11,6 @@ on:
     types: [ opened, synchronize, reopened ]
     branches:
       - master
-
 env:
   CARGO_TERM_COLOR: always
 
@@ -28,12 +27,17 @@ jobs:
           POSTGRES_DB: postgres
         ports:
           - 5432:5432
+      redis:
+        image: redis:6
+        ports:
+          - 6379:6379
     env:
-      SQLX_VERSION: 0.5.11
+      SQLX_VERSION: 0.5.7
       SQLX_FEATURES: postgres
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
+
       - name: Cache dependencies
         id: cache-dependencies
         uses: actions/cache@v2
@@ -43,6 +47,7 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -56,6 +61,7 @@ jobs:
         with:
           path: |
             ~/.cargo/bin/sqlx
+            ~/.cargo/bin/cargo-sqlx
           key: ${{ runner.os }}-sqlx-${{ env.SQLX_VERSION }}-${{ env.SQLX_FEATURES }}
 
       - name: Install sqlx-cli
@@ -67,13 +73,16 @@ jobs:
             sqlx-cli
             --force
             --version=${{ env.SQLX_VERSION }}
-            --features=postgres,rustls
+            --features=${{ env.SQLX_FEATURES }}
             --no-default-features
             --locked
       - name: Migrate database
         run: |
           sudo apt-get install libpq-dev -y
           SKIP_DOCKER=true ./scripts/init_db.sh
+      - name: Check sqlx-data.json is up-to-date
+        run: |
+          cargo sqlx prepare --check -- --bin zero2prod
       - name: Run cargo test
         uses: actions-rs/cargo@v1
         with:
@@ -107,7 +116,7 @@ jobs:
         ports:
           - 5432:5432
     env:
-      SQLX_VERSION: 0.5.11
+      SQLX_VERSION: 0.5.7
       SQLX_FEATURES: postgres
     steps:
       - name: Checkout repository
@@ -116,8 +125,8 @@ jobs:
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
-          components: clippy
           toolchain: stable
+          components: clippy
           override: true
 
       - name: Cache sqlx-cli
@@ -137,7 +146,7 @@ jobs:
             sqlx-cli
             --force
             --version=${{ env.SQLX_VERSION }}
-            --features=postgres,rustls
+            --features=${{ env.SQLX_FEATURES }}
             --no-default-features
             --locked
       - name: Migrate database
@@ -162,8 +171,12 @@ jobs:
           POSTGRES_DB: postgres
         ports:
           - 5432:5432
+      redis:
+        image: redis:6
+        ports:
+          - 6379:6379
     env:
-      SQLX_VERSION: 0.5.11
+      SQLX_VERSION: 0.5.7
       SQLX_FEATURES: postgres
     steps:
       - name: Checkout repository
@@ -192,7 +205,7 @@ jobs:
             sqlx-cli
             --force
             --version=${{ env.SQLX_VERSION }}
-            --features=postgres,rustls
+            --features=${{ env.SQLX_FEATURES }}
             --no-default-features
             --locked
       - name: Migrate database
