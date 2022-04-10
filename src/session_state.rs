@@ -13,6 +13,10 @@ impl TypedSession {
         self.0.renew();
     }
 
+    pub fn log_out(&self) {
+        self.0.purge();
+    }
+
     pub fn insert_user_id(&self, user_id: Uuid) -> Result<(), serde_json::Error> {
         self.0.insert(Self::USER_ID_KEY, user_id)
     }
