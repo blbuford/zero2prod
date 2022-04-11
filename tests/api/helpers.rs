@@ -83,15 +83,28 @@ impl TestApp {
             .expect("Failed to execute request")
     }
 
-    pub async fn post_newsletters(&self, body: serde_json::Value) -> reqwest::Response {
+    pub async fn post_newsletters<Body>(&self, body: &Body) -> reqwest::Response
+    where
+        Body: serde::Serialize,
+    {
         self.api_client
-            .post(&format!("{}/newsletters", &self.address))
-            .header("Content-Type", "application/x-www-form-urlencoded")
-            .basic_auth(&self.test_user.username, Some(&self.test_user.password))
-            .json(&body)
+            .post(&format!("{}/admin/newsletters", &self.address))
+            .form(&body)
             .send()
             .await
             .expect("Failed to execute request")
+    }
+
+    pub async fn get_newsletters(&self) -> reqwest::Response {
+        self.api_client
+            .get(&format!("{}/admin/newsletters", &self.address))
+            .send()
+            .await
+            .expect("Failed to execute request")
+    }
+
+    pub async fn get_newsletters_html(&self) -> String {
+        self.get_newsletters().await.text().await.unwrap()
     }
 
     pub async fn post_logout(&self) -> reqwest::Response {
@@ -159,6 +172,16 @@ impl TestApp {
             .expect("Failed to execute request.")
     }
 
+    pub async fn do_login(&self) {
+        let login_body = serde_json::json!({
+            "username": &self.test_user.username,
+            "password": &self.test_user.password
+        });
+
+        let response = self.post_login(&login_body).await;
+        assert_is_redirect_to(&response, "/admin/dashboard");
+    }
+
     pub fn get_confirmation_links(
         &self,
         email_request: &wiremock::Request,
@@ -186,6 +209,7 @@ impl TestApp {
         ConfirmationLinks { html, plain_text }
     }
 }
+
 pub async fn spawn_app() -> TestApp {
     Lazy::force(&TRACING);
 
