@@ -9,10 +9,10 @@ pub async fn get_newsletter_form() -> HttpResponse {
 <html lang="en">
 <head>
 <meta http-equiv="content-type" content="text/html; charset=utf-8">
-<title>Change Password</title>
+<title>Send a news letter</title>
 </head>
 <body>
-<form action="/admin/newletters" method="post">
+<form action="/admin/newsletters" method="post">
 <label>Title
 <input
 type="text"
