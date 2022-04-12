@@ -61,13 +61,12 @@ pub async fn publish_newsletter(
     Ok(response)
 }
 
-
 #[tracing::instrument(skip_all)]
 async fn insert_newsletter_issue(
     transaction: &mut Transaction<'_, Postgres>,
     title: &str,
     text_content: &str,
-    html_content: &str
+    html_content: &str,
 ) -> Result<Uuid, sqlx::Error> {
     let newsletter_issue_id = Uuid::new_v4();
     sqlx::query!(
@@ -86,13 +85,13 @@ async fn insert_newsletter_issue(
         text_content,
         html_content
     )
-        .execute(transaction)
-        .await?;
+    .execute(transaction)
+    .await?;
     Ok(newsletter_issue_id)
 }
 
 #[tracing::instrument(skip_all)]
-async fn enqueue_delivery_tasks (
+async fn enqueue_delivery_tasks(
     transaction: &mut Transaction<'_, Postgres>,
     newsletter_issue_id: Uuid,
 ) -> Result<(), sqlx::Error> {
@@ -108,8 +107,8 @@ async fn enqueue_delivery_tasks (
         "#,
         newsletter_issue_id
     )
-        .execute(transaction)
-        .await?;
+    .execute(transaction)
+    .await?;
     Ok(())
 }
 

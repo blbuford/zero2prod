@@ -1,8 +1,8 @@
 use std::fmt::{Debug, Display};
 use tokio::task::JoinError;
+use zero2prod::issue_delivery_worker::run_worker_until_stopped;
 use zero2prod::startup::Application;
 use zero2prod::{configuration::get_configuration, telemetry::*};
-use zero2prod::issue_delivery_worker::run_worker_until_stopped;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -12,8 +12,9 @@ async fn main() -> anyhow::Result<()> {
     let configuration = get_configuration().expect("Failed to read configuration");
     let application = tokio::spawn(
         Application::build(configuration.clone())
-        .await?
-        .run_until_stopped());
+            .await?
+            .run_until_stopped(),
+    );
 
     let worker = tokio::spawn(run_worker_until_stopped(configuration));
 
@@ -25,10 +26,7 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn report_exit(
-    task_name: &str,
-    outcome: Result<Result<(), impl Debug + Display>, JoinError>
-) {
+fn report_exit(task_name: &str, outcome: Result<Result<(), impl Debug + Display>, JoinError>) {
     match outcome {
         Ok(Ok(())) => {
             tracing::info!("{} has exited", task_name)
@@ -40,8 +38,8 @@ fn report_exit(
                 "{} failed",
                 task_name
             )
-        },
-        Err(e) =>{
+        }
+        Err(e) => {
             tracing::error!(
                 error.cause_chain = ?e,
                 error.message = %e,
