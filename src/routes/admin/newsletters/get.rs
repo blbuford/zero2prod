@@ -1,10 +1,18 @@
 use actix_web::HttpResponse;
 use actix_web::http::header::ContentType;
+use actix_web_flash_messages::IncomingFlashMessages;
+use std::fmt::Write;
 
-pub async fn get_newsletter_form() -> HttpResponse {
+pub async fn get_newsletter_form(
+    flash_messages: IncomingFlashMessages,
+) -> HttpResponse {
+    let mut message_html = String::new();
+    for m in flash_messages.iter() {
+        writeln!(message_html, "<p><i>{}</i></p>", m.content()).unwrap()
+    }
     HttpResponse::Ok()
         .content_type(ContentType::html())
-        .body(
+        .body(format!(
             r#"<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -12,6 +20,7 @@ pub async fn get_newsletter_form() -> HttpResponse {
 <title>Send a news letter</title>
 </head>
 <body>
+{message_html}
 <form action="/admin/newsletters" method="post">
 <label>Title
 <input
@@ -42,5 +51,5 @@ name="text"
 <p><a href="/admin/dashboard">&lt;- Back</a></p>
 </body>
 </html>"#,
-        )
+        ))
 }

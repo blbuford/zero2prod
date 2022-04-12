@@ -24,7 +24,8 @@ async fn newsletters_are_not_delivered_to_unconfirmed_subscribers() {
 
     let response = app.post_newsletters(&newsletter_request_body).await;
 
-    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(response.status().as_u16(), 303);
+    assert_is_redirect_to(&response, "/admin/newsletters");
 }
 
 #[tokio::test]
@@ -48,7 +49,8 @@ async fn newsletters_are_delivered_to_confirmed_subscribers() {
     app.do_login().await;
     let response = app.post_newsletters(&newsletter_request_body).await;
 
-    assert_eq!(response.status().as_u16(), 200);
+    assert_eq!(response.status().as_u16(), 303);
+    assert_is_redirect_to(&response, "/admin/newsletters");
     // Mock verifies on Drop that we have sent the newsletter email
 }
 
@@ -86,7 +88,7 @@ async fn newsletters_returns_400_for_invalid_data() {
 }
 
 #[tokio::test]
-async fn requests_that_arent_logged_in_are_rejected() {
+async fn you_must_be_logged_in_to_publish_a_newsletter() {
     let app = spawn_app().await;
 
     let newsletter_request_body = serde_json::json!({
@@ -96,6 +98,16 @@ async fn requests_that_arent_logged_in_are_rejected() {
     });
 
     let response = app.post_newsletters(&newsletter_request_body).await;
+
+    assert_eq!(303, response.status().as_u16());
+    assert_is_redirect_to(&response, "/login");
+}
+
+#[tokio::test]
+async fn you_must_be_logged_in_to_get_publish_newsletter_form() {
+    let app = spawn_app().await;
+
+     let response = app.get_newsletters().await;
 
     assert_eq!(303, response.status().as_u16());
     assert_is_redirect_to(&response, "/login");
