@@ -1,4 +1,6 @@
 use crate::helpers::{assert_is_redirect_to, spawn_app, ConfirmationLinks, TestApp};
+use std::time::Duration;
+use uuid::Uuid;
 use wiremock::matchers::{any, method, path};
 use wiremock::{Mock, ResponseTemplate};
 
@@ -18,6 +20,7 @@ async fn newsletters_are_not_delivered_to_unconfirmed_subscribers() {
         "title": "Newsletter Title",
         "text": "Newsletter body as plain text",
         "html": "<p>Newsletter body as HTML</p>",
+        "idempotency_key": Uuid::new_v4().to_string(),
     });
 
     app.do_login().await;
@@ -44,6 +47,7 @@ async fn newsletters_are_delivered_to_confirmed_subscribers() {
         "title": "Newsletter Title",
         "text": "Newsletter body as plain text",
         "html": "<p>Newsletter body as HTML</p>",
+        "idempotency_key": Uuid::new_v4().to_string(),
     });
 
     app.do_login().await;
@@ -95,6 +99,7 @@ async fn you_must_be_logged_in_to_publish_a_newsletter() {
         "title": "Newsletter Title",
         "text": "Newsletter body as plain text",
         "html": "<p>Newsletter body as HTML</p>",
+        "idempotency_key": Uuid::new_v4().to_string(),
     });
 
     let response = app.post_newsletters(&newsletter_request_body).await;
@@ -107,10 +112,79 @@ async fn you_must_be_logged_in_to_publish_a_newsletter() {
 async fn you_must_be_logged_in_to_get_publish_newsletter_form() {
     let app = spawn_app().await;
 
-     let response = app.get_newsletters().await;
+    let response = app.get_newsletters().await;
 
     assert_eq!(303, response.status().as_u16());
     assert_is_redirect_to(&response, "/login");
+}
+
+#[tokio::test]
+async fn newsletter_creation_is_idempotent() {
+    let app = spawn_app().await;
+
+    create_confirmed_subscriber(&app).await;
+    app.do_login().await;
+
+    Mock::given(path("/email"))
+        .and(method("POST"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&app.email_server)
+        .await;
+
+    // Submit a newsletter form
+    let newsletter_request_body = serde_json::json!({
+        "title": "Newsletter Title",
+        "text": "Newsletter body as plain text",
+        "html": "<p>Newsletter body as HTML</p>",
+        "idempotency_key": Uuid::new_v4().to_string(),
+    });
+
+    let response = app.post_newsletters(&newsletter_request_body).await;
+    assert_is_redirect_to(&response, "/admin/newsletters");
+
+    // Follow the redirect
+    let html_page = app.get_newsletters_html().await;
+    assert!(html_page.contains("<p><i>The newsletter issue has been published!</i></p>"));
+
+    // Submit the newsletter **again**
+    let response = app.post_newsletters(&newsletter_request_body).await;
+    assert_is_redirect_to(&response, "/admin/newsletters");
+
+    // Follow the redirect
+    let html_page = app.get_newsletters_html().await;
+    assert!(html_page.contains("<p><i>The newsletter issue has been published!</i></p>"));
+}
+
+#[tokio::test]
+async fn concurrent_form_submission_is_handled_gracefully() {
+    let app = spawn_app().await;
+    create_confirmed_subscriber(&app).await;
+    app.do_login().await;
+
+    Mock::given(path("/email"))
+        .and(method("POST"))
+        .respond_with(ResponseTemplate::new(200).set_delay(Duration::from_secs(2)))
+        .expect(1)
+        .mount(&app.email_server)
+        .await;
+
+    // Submit a newsletter form
+    let newsletter_request_body = serde_json::json!({
+        "title": "Newsletter Title",
+        "text": "Newsletter body as plain text",
+        "html": "<p>Newsletter body as HTML</p>",
+        "idempotency_key": Uuid::new_v4().to_string(),
+    });
+
+    let response1 = app.post_newsletters(&newsletter_request_body);
+    let response2 = app.post_newsletters(&newsletter_request_body);
+    let (response1, response2) = tokio::join!(response1, response2);
+    assert_eq!(response1.status(), response2.status());
+    assert_eq!(
+        response1.text().await.unwrap(),
+        response2.text().await.unwrap()
+    );
 }
 
 async fn create_unconfirmed_subscriber(app: &TestApp) -> ConfirmationLinks {

@@ -3,9 +3,7 @@ use actix_web::HttpResponse;
 use actix_web_flash_messages::IncomingFlashMessages;
 use std::fmt::Write;
 
-pub async fn change_password_form(
-    flash_messages: IncomingFlashMessages,
-) -> HttpResponse {
+pub async fn change_password_form(flash_messages: IncomingFlashMessages) -> HttpResponse {
     let mut msg_html = String::new();
     for m in flash_messages.iter() {
         writeln!(msg_html, "<p><i>{}</i></p>", m.content()).unwrap();
